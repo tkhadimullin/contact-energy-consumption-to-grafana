@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Docker": {
+      "commandName": "Executable"
+    },
+    "contact-energy-poller": {
+      "commandName": "Project"
+    }
+  }
+}
