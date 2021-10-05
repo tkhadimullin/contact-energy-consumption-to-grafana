@@ -19,9 +19,10 @@ namespace ContactEnergyPoller
 
         public async Task WriteAsync(LineProtocolPayload payload)
         {
+            Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Saving payload to InfluxDb: {_influxDbUrl}");
             var influxClient = new LineProtocolClient(new Uri(_influxDbUrl), _influxDatabase);
             var result = await influxClient.WriteAsync(payload);
-            Console.WriteLine($"Response from InfluxDb: Success={result.Success}, ErrorMessage={result.ErrorMessage}");
+            Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Response from InfluxDb: Success={result.Success}, ErrorMessage={result.ErrorMessage}");
 
 
         }

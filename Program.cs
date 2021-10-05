@@ -34,25 +34,25 @@ namespace ContactEnergyPoller
             _isConsoleOutput = bool.Parse(_configuration.GetSection("App").GetSection("ConsoleOutput").Value);
             _influxDbEnabled = bool.Parse(_configuration.GetSection("InfluxDb").GetSection("Enabled").Value);
 
-            Console.WriteLine("Starting up");
+            Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Starting up");
 
             _worker = new Worker(_configuration);
             if (_configuration["backtrackDate"] != null)
             {
                 var backtrackDate = DateTime.Parse(_configuration["backtrackDate"]);
-                Console.WriteLine($"Getting consumption for {backtrackDate}");
+                Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Getting consumption for {backtrackDate}");
                 
                 await HandleJob(backtrackDate);
 
-                Console.WriteLine("Done");
+                Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Done");
             }
             else
             {
                 while (true)
                 {
-                    Console.WriteLine("Starting loop run...");
+                    Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Starting loop run...");
                     await HandleJob();
-                    Console.WriteLine($"Sleeping for {_sleepTimeout} ms...");
+                    Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Sleeping for {_sleepTimeout} ms...");
                     Thread.Sleep(_sleepTimeout);
                 }
             }
@@ -62,17 +62,25 @@ namespace ContactEnergyPoller
         {
             var payload = await _worker.InvokeAsync(date);
 
-            if (_influxDbEnabled)
+            if (payload == null)
             {
-                var writer = new InfluxWriter(_configuration);
-                await writer.WriteAsync(payload);
+                Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] No payload to store. Skipping");
             }
-
-            if (_isConsoleOutput)
+            else
             {
-                var wr = new StringWriter();
-                payload.Format(wr);
-                Console.WriteLine(wr.GetStringBuilder().ToString());
+                if (_influxDbEnabled)
+                {
+                    Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] No payload to store. Skipping");
+                    var writer = new InfluxWriter(_configuration);
+                    await writer.WriteAsync(payload);
+                }
+
+                if (_isConsoleOutput)
+                {
+                    var wr = new StringWriter();
+                    payload.Format(wr);
+                    Console.WriteLine(wr.GetStringBuilder().ToString());
+                }
             }
         }
     }

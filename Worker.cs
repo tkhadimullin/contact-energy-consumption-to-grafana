@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using ContactEnergyPoller.Models;
 using InfluxDB.LineProtocol.Payload;
@@ -16,8 +17,7 @@ namespace ContactEnergyPoller
 
 
         private readonly string _influxMeasurement;
-
-        private readonly bool _isConsoleOutput;
+        
         private readonly string _loginUrl;
         private readonly string _userName;
         private readonly string _password;
@@ -47,20 +47,20 @@ namespace ContactEnergyPoller
         public async Task<LineProtocolPayload> InvokeAsync(DateTime? date = null)
         {
             DateTime queryDate = date ?? DateTime.UtcNow;
-            Console.WriteLine($"Getting usage for {queryDate}");
+            Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Getting usage for {queryDate}");
 
             var loginResponse = await _client.PostAsync(_loginUrl, new StringContent($"{{\"UserName\": \"{_userName}\", \"Password\": \"{_password}\", \"AllowNewOlsSiteAccess\": \"true\", \"NewOlsSiteAccessValue\": \"true\"}}", Encoding.UTF8, "application/json"));
             loginResponse.EnsureSuccessStatusCode();
             dynamic login = JsonConvert.DeserializeObject(await loginResponse.Content.ReadAsStringAsync());
             if (!string.Equals(login.IsSuccessful.ToString(), "true", StringComparison.InvariantCultureIgnoreCase))
             {
-                Console.WriteLine($"Error authenticating: {login.Errors}");
+                Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Error authenticating: {login.Errors}");
                 return null;
             }
 
             string authToken = login.Data.Token.ToString();
             _client.DefaultRequestHeaders.TryAddWithoutValidation("authorization", authToken);
-            Console.WriteLine($"Got Auth token");
+            Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Got Auth token");
 
             var contractsToQuery = new Dictionary<string, string> {{_contractId, _contractLocation}};
 
@@ -70,12 +70,26 @@ namespace ContactEnergyPoller
             {
                 var from = queryDate.Date.AddDays(-1).ToString("yyyy-MM-dd");
                 var to = queryDate.Date.AddDays(-1).ToString("yyyy-MM-dd");
-                Console.WriteLine($"Querying usage for today on {contract} from {from} to {to}...");
+                Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Querying usage for today on {contract} from {from} to {to}...");
                 var usageResponse = await _client.PostAsync($"/usage/{contract}?interval=hourly&from={from}&to={to}", new StringContent(""));
-                usageResponse.EnsureSuccessStatusCode();
+
+                if (!usageResponse.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Error getting usage: {usageResponse.ReasonPhrase}");
+                    Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Error details: {await usageResponse.Content.ReadAsStringAsync()}");
+                    return null;
+                }
                 var usage = JsonConvert.DeserializeObject<List<Usage>>(await usageResponse.Content.ReadAsStringAsync());
 
-                foreach (var item in usage)
+                Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Usage request success, got {usage?.Count} entries");
+                if (usage?.Count == 0)
+                {
+                    Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] No entries for {queryDate}, trying {queryDate.AddDays(-1)}");
+                    Thread.Sleep(5000);
+                    return await InvokeAsync(queryDate.AddDays(-1));
+                }
+
+                foreach (var item in usage ?? new List<Usage>())
                 {
                     var point = new LineProtocolPoint(
                         _influxMeasurement,
