@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,8 @@ namespace ContactEnergyPoller
         private readonly string _password;
         private readonly string _contractId;
         private readonly string _contractLocation;
+
+        private string authToken;
 
         public Worker(IConfiguration configuration)
         {
@@ -58,7 +61,8 @@ namespace ContactEnergyPoller
                 return null;
             }
 
-            string authToken = login.Data.Token.ToString();
+            authToken = login.Data.Token.ToString();
+            _client.DefaultRequestHeaders.Remove("authorization");
             _client.DefaultRequestHeaders.TryAddWithoutValidation("authorization", authToken);
             Console.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Got Auth token");
 
