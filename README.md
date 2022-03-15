@@ -36,7 +36,7 @@ services:
       - ./grafana:/var/lib/grafana
 
   contact-power:
-    build: .
+    image: wiseowls/contact-energy-poller
     environment:
       - CONTACT_ContactAPI:UserName= <your login>
       - CONTACT_ContactAPI:Password= <your password>
