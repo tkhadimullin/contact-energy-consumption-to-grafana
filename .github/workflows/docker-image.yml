@@ -31,5 +31,5 @@ jobs:
       uses: docker/build-push-action@v2.10.0
       with:      
         push: true
-        tags: contact-energy-poller
+        tags: wiseowls/contact-energy-poller:latest
         labels: $(date +%s)       
