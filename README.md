@@ -22,12 +22,12 @@ version: "3"
 
 services:
   influxdb:
-    image: influxdb:1.5-alpine
+    image: influxdb:1.8-alpine
     volumes:
       - ./influxdb:/var/lib/influxdb
 
   grafana:
-    image: grafana/grafana:6.6.2
+    image: grafana/grafana:10.1.5
     depends_on:
       - influxdb
     ports:
